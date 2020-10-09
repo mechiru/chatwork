@@ -1,4 +1,4 @@
-name: 'chatwork'
+name: chatwork-actions
 description: 'Send a message to the chatwork when an issue or comment is created or edited'
 author: 'mechiru'
 inputs:
