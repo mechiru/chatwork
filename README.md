@@ -37,7 +37,7 @@ jobs:
           context: ${{ toJson(github) }}
 ```
 
-See [action.yal](./action.yml).
+See [action.yml](./action.yml).
 
 ## License
 
