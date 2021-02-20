@@ -109,8 +109,7 @@ export function postMessage(
       res.on('data', chunk => (body += chunk));
       res.on('end', () => {
         try {
-          const resp = JSON.parse(body);
-          resolve(resp);
+          resolve(JSON.parse(body));
         } catch (error) {
           reject(error);
         }
