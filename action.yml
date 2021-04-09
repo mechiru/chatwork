@@ -15,9 +15,6 @@ inputs:
     required: true
     description: 'GitHub context'
     default: ${{ toJson(github) }}
-  ignoreUpdate:
-    description: 'Whether to trigger editing of issues and issue comments'
-    default: false
   ignoreBody:
     description: 'Whether to send the github issue body or issue comments into the body of the chatwork message'
     default: false

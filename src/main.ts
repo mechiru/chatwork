@@ -7,7 +7,6 @@ type Input = Readonly<{
   token: string;
   mapping: Mapping;
   context: Context;
-  ignoreUpdate: boolean;
   ignoreBody: boolean;
 }>;
 
@@ -42,9 +41,8 @@ function parseInput(): Input {
   const token = core.getInput('token');
   const mapping = JSON.parse(core.getInput('mapping'));
   const context = JSON.parse(core.getInput('context'));
-  const ignoreUpdate = core.getInput('ignoreUpdate') === 'true';
   const ignoreBody = core.getInput('ignoreBody') === 'true';
-  return {roomId, token, mapping, context, ignoreUpdate, ignoreBody};
+  return {roomId, token, mapping, context, ignoreBody};
 }
 
 export function extractUsers(s: string): string[] {
@@ -80,7 +78,7 @@ function isAlphaNumeric(s: string): boolean {
   return /^[a-z0-9]+$/i.test(s);
 }
 
-function mapToChatworkUser(ghUsers: string[], map: Mapping): string[] {
+function toChatworkUsers(ghUsers: string[], map: Mapping): string[] {
   return ghUsers.map(x => map[x]).filter((x: string | null): x is string => x != null);
 }
 
@@ -134,7 +132,7 @@ export function toChatworkMessage(ctx: Context, map: Mapping, ignoreBody: boolea
     const assignees = ctx.event.issue.assignees.map(x => x.login);
     ghUsers = ghUsers.concat(assignees).filter((x, i, xs) => xs.indexOf(x) === i);
   }
-  const users = mapToChatworkUser(ghUsers, map);
+  const users = toChatworkUsers(ghUsers, map);
 
   let msg = users.length > 0 ? `${users.join('\n')}\n` : '';
   msg += `title: ${title}
@@ -145,23 +143,11 @@ url: ${url}
   return msg;
 }
 
-export function shouldTrigger(ctx: Context, ignoreUpdate: boolean): boolean {
-  return (
-    ['issues', 'issue_comment'].includes(ctx.event_name) &&
-    (['opened', 'created'].includes(ctx.event.action) ||
-      (ctx.event.action === 'edited' && !ignoreUpdate))
-  );
-}
-
 async function run(): Promise<void> {
   try {
     const input = parseInput();
     core.debug(`event_name: ${input.context.event_name}`);
     core.debug(`event.action: ${JSON.stringify(input.context.event.action)}`);
-
-    const trigger = shouldTrigger(input.context, input.ignoreUpdate);
-    core.debug(`trigger: ${trigger}`);
-    if (!trigger) return;
 
     const body = toChatworkMessage(input.context, input.mapping, input.ignoreBody);
     core.debug(`message body: ${body}`);
