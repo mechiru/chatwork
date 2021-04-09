@@ -78,7 +78,7 @@ function isAlphaNumeric(s: string): boolean {
   return /^[a-z0-9]+$/i.test(s);
 }
 
-function mapToChatworkUser(ghUsers: string[], map: Mapping): string[] {
+function toChatworkUsers(ghUsers: string[], map: Mapping): string[] {
   return ghUsers.map(x => map[x]).filter((x: string | null): x is string => x != null);
 }
 
@@ -132,7 +132,7 @@ export function toChatworkMessage(ctx: Context, map: Mapping, ignoreBody: boolea
     const assignees = ctx.event.issue.assignees.map(x => x.login);
     ghUsers = ghUsers.concat(assignees).filter((x, i, xs) => xs.indexOf(x) === i);
   }
-  const users = mapToChatworkUser(ghUsers, map);
+  const users = toChatworkUsers(ghUsers, map);
 
   let msg = users.length > 0 ? `${users.join('\n')}\n` : '';
   msg += `title: ${title}
