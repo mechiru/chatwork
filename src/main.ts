@@ -7,7 +7,6 @@ type Input = Readonly<{
   token: string;
   mapping: Mapping;
   context: Context;
-  ignoreUpdate: boolean;
   ignoreBody: boolean;
 }>;
 
@@ -42,9 +41,8 @@ function parseInput(): Input {
   const token = core.getInput('token');
   const mapping = JSON.parse(core.getInput('mapping'));
   const context = JSON.parse(core.getInput('context'));
-  const ignoreUpdate = core.getInput('ignoreUpdate') === 'true';
   const ignoreBody = core.getInput('ignoreBody') === 'true';
-  return {roomId, token, mapping, context, ignoreUpdate, ignoreBody};
+  return {roomId, token, mapping, context, ignoreBody};
 }
 
 export function extractUsers(s: string): string[] {
@@ -145,23 +143,11 @@ url: ${url}
   return msg;
 }
 
-export function shouldTrigger(ctx: Context, ignoreUpdate: boolean): boolean {
-  return (
-    ['issues', 'issue_comment'].includes(ctx.event_name) &&
-    (['opened', 'created'].includes(ctx.event.action) ||
-      (ctx.event.action === 'edited' && !ignoreUpdate))
-  );
-}
-
 async function run(): Promise<void> {
   try {
     const input = parseInput();
     core.debug(`event_name: ${input.context.event_name}`);
     core.debug(`event.action: ${JSON.stringify(input.context.event.action)}`);
-
-    const trigger = shouldTrigger(input.context, input.ignoreUpdate);
-    core.debug(`trigger: ${trigger}`);
-    if (!trigger) return;
 
     const body = toChatworkMessage(input.context, input.mapping, input.ignoreBody);
     core.debug(`message body: ${body}`);
