@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 1
     steps:
-      - uses: mechiru/chatwork@v1
+      - uses: mechiru/chatwork@v2
         with:
           roomId: 123
           token: ${{ secrets.CHATWORK_API_TOKEN }}
