@@ -14,6 +14,7 @@ inputs:
   context:
     required: true
     description: 'GitHub context'
+    default: ${{ toJson(github) }}
   ignoreUpdate:
     description: 'Whether to trigger editing of issues and issue comments'
     default: false

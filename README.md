@@ -34,7 +34,6 @@ jobs:
             {
               "mechiru": "[To:123]@mechiru"
             }
-          context: ${{ toJson(github) }}
 ```
 
 See [action.yml](./action.yml).
