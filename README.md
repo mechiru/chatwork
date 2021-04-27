@@ -38,7 +38,7 @@ jobs:
           mapping: |
             {
               "mechiru": "[To:123]@mechiru",
-              "organization/team": "[To:123]@mechiru,[To:124]@suzuki",
+              "organization/team": "[To:123]@mechiru [To:124]@suzuki",
             }
 ```
 
