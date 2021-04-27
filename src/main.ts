@@ -134,9 +134,10 @@ export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean):
   const url = ctx.event.comment?.html_url ?? issue?.html_url;
   const body = ctx.event.comment?.body ?? issue?.body ?? '';
   let users = extractUsers(body);
-  if (issue != null) {
-    const assignees = issue.assignees.concat(issue.requested_reviewers ?? []).map(x => x.login);
-    users = users.concat(assignees).filter((x, i, xs) => xs.indexOf(x) === i);
+  if (ctx.event_name !== 'issue_comment') {
+    users = users
+      .concat(issue!.assignees.concat(issue!.requested_reviewers ?? []).map(x => x.login))
+      .filter((x, i, xs) => xs.indexOf(x) === i);
   }
   const cwUsers = toChatworkUsers(users, map);
 
