@@ -1,5 +1,5 @@
 name: 'chatwork-actions'
-description: 'Send a message to the chatwork when an issue or comment is created or edited'
+description: 'This GitHub Action sends a message to Chatwork when an issue, comment or pull request is created or edited.'
 author: 'mechiru'
 inputs:
   roomId:
