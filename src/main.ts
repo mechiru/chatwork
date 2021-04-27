@@ -27,6 +27,7 @@ type Context = Readonly<{
   event_name: 'issues' | 'issue_comment' | 'pull_request';
   // https://developer.github.com/webhooks/event-payloads/#issues
   // https://developer.github.com/webhooks/event-payloads/#issue_comment
+  // https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#pull_request
   // created, edited or deleted
   event: Readonly<{
     // issues and pull_request: opened or edited
