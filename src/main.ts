@@ -12,27 +12,32 @@ type Input = Readonly<{
 
 type Mapping = {[key: string]: string | null};
 
+type Issue = Readonly<{
+  html_url: string;
+  assignees: Readonly<{login: string}[]>;
+  title: string;
+  body: string;
+  requested_reviewers?: Readonly<{login: string}>[]; // for pull request
+  // TODO: support `requested_teams`?
+}>;
+
 // https://docs.github.com/en/free-pro-team@latest/actions/reference/context-and-expression-syntax-for-github-actions#github-context
 type Context = Readonly<{
   actor: string;
-  event_name: 'issues' | 'issue_comment';
+  event_name: 'issues' | 'issue_comment' | 'pull_request';
   // https://developer.github.com/webhooks/event-payloads/#issues
   // https://developer.github.com/webhooks/event-payloads/#issue_comment
   // created, edited or deleted
   event: Readonly<{
-    // issues: opened or edited
+    // issues and pull_request: opened or edited
     // issue_comment: created or edited
     action: string;
     comment?: Readonly<{
       html_url: string;
       body: string;
     }>;
-    issue: Readonly<{
-      html_url: string;
-      assignees: Readonly<{login: string}[]>;
-      title: string;
-      body: string;
-    }>;
+    issue?: Issue;
+    pull_request?: Issue;
   }>;
 }>;
 
@@ -122,25 +127,25 @@ export function postMessage(
 }
 /* eslint-enable @typescript-eslint/promise-function-async */
 
-export function toChatworkMessage(ctx: Context, map: Mapping, ignoreBody: boolean): string {
-  const title = ctx.event.issue.title;
-  const isComment = ctx.event_name === 'issue_comment';
-  const url = isComment ? ctx.event.comment!.html_url : ctx.event.issue.html_url;
-  const eventBody = isComment ? ctx.event.comment!.body : ctx.event.issue.body;
-  let ghUsers = extractUsers(eventBody);
-  if (!isComment) {
-    const assignees = ctx.event.issue.assignees.map(x => x.login);
-    ghUsers = ghUsers.concat(assignees).filter((x, i, xs) => xs.indexOf(x) === i);
+export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): string {
+  const issue = ctx.event.issue || ctx.event.pull_request;
+  const title = issue?.title;
+  const url = ctx.event.comment?.html_url ?? issue?.html_url;
+  const body = ctx.event.comment?.body ?? issue?.body ?? '';
+  let users = extractUsers(body);
+  if (issue != null) {
+    const assignees = issue.assignees.concat(issue.requested_reviewers ?? []).map(x => x.login);
+    users = users.concat(assignees).filter((x, i, xs) => xs.indexOf(x) === i);
   }
-  const users = toChatworkUsers(ghUsers, map);
+  const cwUsers = toChatworkUsers(users, map);
 
-  let msg = users.length > 0 ? `${users.join('\n')}\n` : '';
-  msg += `title: ${title}
+  let message = cwUsers.length > 0 ? `${cwUsers.join('\n')}\n` : '';
+  message += `title: ${title}
 url: ${url}
 `;
   // TODO: Convert to chatwork message style.
-  if (!ignoreBody) msg += `\n${eventBody}`;
-  return msg;
+  if (!minimum) message += `\n${body}`;
+  return message;
 }
 
 async function run(): Promise<void> {

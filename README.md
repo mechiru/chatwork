@@ -3,7 +3,7 @@
 [![ci](https://github.com/mechiru/chatwork/workflows/ci/badge.svg)](https://github.com/mechiru/chatwork/actions?query=workflow:ci)
 ![Dependabot](https://api.dependabot.com/badges/status?host=github&repo=mechiru/chatwork)
 
-This GitHub Action sends a message to the chatwork when an issue or comment is created or edited.
+This GitHub Action sends a message to Chatwork when an issue, comment or pull request is created or edited.
 
 ## Example workflow
 
@@ -21,6 +21,11 @@ on:
       - created
       - edited
 
+  pull_request:
+    types:
+      - opened
+      - edited
+
 jobs:
   notify:
     runs-on: ubuntu-latest
@@ -32,7 +37,8 @@ jobs:
           token: ${{ secrets.CHATWORK_API_TOKEN }}
           mapping: |
             {
-              "mechiru": "[To:123]@mechiru"
+              "mechiru": "[To:123]@mechiru",
+              "organization/team": "[To:123]@mechiru,[To:124]@suzuki",
             }
 ```
 
