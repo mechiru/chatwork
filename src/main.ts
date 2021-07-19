@@ -141,9 +141,10 @@ export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean):
   }
   const cwUsers = toChatworkUsers(users, map);
 
-  let message = `from: @${ctx.actor}\n`;
+  let message = '';
   if (cwUsers.length > 0) message += `${cwUsers.join('\n')}\n`;
-  message += `title: ${title}
+  message += `from: @${ctx.actor}
+title: ${title}
 url: ${url}
 `;
   // TODO: Convert to chatwork message style.
