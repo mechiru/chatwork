@@ -166,7 +166,13 @@ async function run(): Promise<void> {
 
     core.setOutput('messageId', res.message_id);
   } catch (error) {
-    core.setFailed(error.message);
+    if (typeof error === 'string') {
+      core.setFailed(error);
+    } else if (error instanceof Error) {
+      core.setFailed(error.message);
+    } else {
+      core.setFailed(Object.prototype.toString.call(error));
+    }
   }
 }
 
