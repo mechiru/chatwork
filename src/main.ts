@@ -8,6 +8,7 @@ type Input = Readonly<{
   mapping: Mapping;
   context: Context;
   ignoreBody: boolean;
+  skipSendingMessage: boolean;
 }>;
 
 type Mapping = {[key: string]: string | null};
@@ -47,8 +48,9 @@ function parseInput(): Input {
   const token = core.getInput('token');
   const mapping = JSON.parse(core.getInput('mapping'));
   const context = JSON.parse(core.getInput('context'));
-  const ignoreBody = core.getInput('ignoreBody') === 'true';
-  return {roomId, token, mapping, context, ignoreBody};
+  const ignoreBody = core.getBooleanInput('ignoreBody');
+  const skipSendingMessage = core.getBooleanInput('skipSendingMessage');
+  return {roomId, token, mapping, context, ignoreBody, skipSendingMessage};
 }
 
 export function extractUsers(s: string): string[] {
@@ -128,12 +130,13 @@ export function postMessage(
 }
 /* eslint-enable @typescript-eslint/promise-function-async */
 
-export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): string {
+export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): [boolean, string] {
   const issue = ctx.event.issue || ctx.event.pull_request;
   const title = issue?.title;
   const url = ctx.event.comment?.html_url ?? issue?.html_url;
   const body = ctx.event.comment?.body ?? issue?.body ?? '';
   let users = extractUsers(body);
+  const foundUser = users.length > 0;
   if (ctx.event_name !== 'issue_comment') {
     users = users
       .concat(issue!.assignees.concat(issue!.requested_reviewers ?? []).map(x => x.login))
@@ -149,7 +152,7 @@ url: ${url}
 `;
   // TODO: Convert to chatwork message style.
   if (!minimum) message += `\n${body}`;
-  return message;
+  return [foundUser, message];
 }
 
 async function run(): Promise<void> {
@@ -158,8 +161,13 @@ async function run(): Promise<void> {
     core.debug(`event_name: ${input.context.event_name}`);
     core.debug(`event.action: ${JSON.stringify(input.context.event.action)}`);
 
-    const body = toChatworkMessage(input.context, input.mapping, input.ignoreBody);
+    const [foundUser, body] = toChatworkMessage(input.context, input.mapping, input.ignoreBody);
     core.debug(`message body: ${body}`);
+
+    if (input.skipSendingMessage && !foundUser) {
+      core.debug('skip sending message');
+      return;
+    }
 
     const res = await postMessage(input, body);
     core.debug(`response: ${res}`);
