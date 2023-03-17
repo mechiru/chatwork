@@ -1,4 +1,5 @@
 import * as core from '@actions/core';
+import {readFile} from 'fs/promises';
 import * as https from 'https';
 import * as querystring from 'querystring';
 
@@ -6,6 +7,7 @@ type Input = Readonly<{
   roomId: number;
   token: string;
   mapping: Mapping;
+  mappingFile: string;
   context: Context;
   ignoreBody: boolean;
   skipSendingMessage: boolean;
@@ -47,10 +49,24 @@ function parseInput(): Input {
   const roomId = +core.getInput('roomid');
   const token = core.getInput('token');
   const mapping = JSON.parse(core.getInput('mapping'));
+  const mappingFile = core.getInput('mappingFile');
   const context = JSON.parse(core.getInput('context'));
   const ignoreBody = core.getBooleanInput('ignoreBody');
   const skipSendingMessage = core.getBooleanInput('skipSendingMessage');
-  return {roomId, token, mapping, context, ignoreBody, skipSendingMessage};
+  return {roomId, token, mapping, mappingFile, context, ignoreBody, skipSendingMessage};
+}
+
+async function mergeMappingFile(mapping: Mapping, mappingFile: string): Promise<Mapping> {
+  if (mappingFile === '') {
+    return mapping;
+  }
+
+  const file = await readFile(mappingFile, {encoding: 'utf8'});
+  const data = JSON.parse(file) as Mapping;
+  for (const key in mapping) {
+    data[key] = mapping[key];
+  }
+  return data;
 }
 
 export function extractUsers(s: string): string[] {
@@ -161,7 +177,10 @@ async function run(): Promise<void> {
     core.debug(`event_name: ${input.context.event_name}`);
     core.debug(`event.action: ${JSON.stringify(input.context.event.action)}`);
 
-    const [foundUser, body] = toChatworkMessage(input.context, input.mapping, input.ignoreBody);
+    const mapping = await mergeMappingFile(input.mapping, input.mappingFile);
+    core.debug(`mapping: ${JSON.stringify(mapping)}`);
+
+    const [foundUser, body] = toChatworkMessage(input.context, mapping, input.ignoreBody);
     core.debug(`message body: ${body}`);
 
     if (input.skipSendingMessage && !foundUser) {
