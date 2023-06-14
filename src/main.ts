@@ -182,7 +182,7 @@ function parseInput(): Input {
   return {roomId, token, mapping, mappingFile, context, ignoreBody, skipSendingMessage};
 }
 
-async function mergeMappingFile(mapping: Mapping, mappingFile: string): Promise<Mapping> {
+export async function mergeMappingFile(mapping: Mapping, mappingFile: string): Promise<Mapping> {
   if (mappingFile === '') {
     return mapping;
   }

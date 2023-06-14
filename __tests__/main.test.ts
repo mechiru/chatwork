@@ -1,5 +1,18 @@
-import {extractUsers, postMessage} from '../src/main';
 import * as process from 'process';
+import path from 'path';
+import {extractUsers, postMessage, mergeMappingFile} from '../src/main';
+
+test('test mergeMappingFile', done => {
+  (async () => {
+    const filepath = path.join(__dirname, 'testdata/mapping.json');
+    expect(await mergeMappingFile({mechiru1: '[To:123]@mechiru'}, filepath)).toStrictEqual({
+      mechiru: '[To:123]@mechiru',
+      'organization/team': '[To:123]@mechiru [To:124]@suzuki',
+      mechiru1: '[To:123]@mechiru'
+    });
+    done();
+  })();
+});
 
 test('test extractUsers', () => {
   [
