@@ -277,20 +277,20 @@ export function extractMessageParts(
 ): Readonly<{title: string; body: string; logins: string[]; url: string}> {
   switch (ctx.event_name) {
     case 'discussion': {
-      const title = ctx.event.discussion.title;
-      const logins: string[] = [];
+      const common = {
+        title: ctx.event.discussion.title,
+        logins: []
+      };
       return ctx.event.action !== 'answered'
         ? {
-            title,
             body: ctx.event.discussion.body,
-            logins,
-            url: ctx.event.discussion.html_url
+            url: ctx.event.discussion.html_url,
+            ...common
           }
         : {
-            title,
             body: ctx.event.answer.body,
-            logins,
-            url: ctx.event.answer.html_url
+            url: ctx.event.answer.html_url,
+            ...common
           };
     }
     case 'discussion_comment':
