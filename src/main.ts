@@ -347,7 +347,7 @@ async function run(): Promise<void> {
   try {
     const input = parseInput();
     core.debug(`event_name: ${input.context.event_name}`);
-    core.debug(`event.action: ${JSON.stringify(input.context.event.action)}`);
+    core.debug(`event.action: ${input.context.event.action}`);
 
     const mapping = await mergeMappingFile(input.mapping, input.mappingFile);
     core.debug(`mapping: ${JSON.stringify(mapping)}`);
