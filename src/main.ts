@@ -326,7 +326,7 @@ export function extractMessageParts(
 
 export function toChatworkMessage(ctx: GitHubContext, map: Mapping, minimum: boolean): [boolean, string] {
   const {title, body, logins, url} = extractMessageParts(ctx);
-  let users = extractUsers(body)
+  const users = extractUsers(body)
     .concat(logins)
     .filter((x, i, xs) => xs.indexOf(x) === i);
   const foundUser = users.length > 0;
