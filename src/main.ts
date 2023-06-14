@@ -8,42 +8,168 @@ type Input = Readonly<{
   token: string;
   mapping: Mapping;
   mappingFile: string;
-  context: Context;
+  context: GitHubContext;
   ignoreBody: boolean;
   skipSendingMessage: boolean;
 }>;
 
 type Mapping = {[key: string]: string | null};
 
-type Issue = Readonly<{
-  html_url: string;
-  assignees: Readonly<{login: string}[]>;
-  title: string;
-  body: string;
-  requested_reviewers?: Readonly<{login: string}>[]; // for pull request
-  // TODO: support `requested_teams`?
+// https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
+type GitHubContext =
+  | DiscussionCreated
+  | DiscussionEdited
+  | DiscussionAnswered
+  | DiscussionCommentCreated
+  | DiscussionCommentEdited
+  | IssuesOpened
+  | IssuesEdited
+  | IssueCommentCreated
+  | IssueCommentEdited
+  | PullRequestOpened
+  | PullRequestEdited;
+
+type Context<EventName, Event> = Readonly<{
+  actor: string;
+  event_name: EventName;
+  event: Event;
 }>;
 
-// https://docs.github.com/en/free-pro-team@latest/actions/reference/context-and-expression-syntax-for-github-actions#github-context
-type Context = Readonly<{
-  actor: string;
-  event_name: 'issues' | 'issue_comment' | 'pull_request';
-  // https://developer.github.com/webhooks/event-payloads/#issues
-  // https://developer.github.com/webhooks/event-payloads/#issue_comment
-  // https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#pull_request
-  // created, edited or deleted
-  event: Readonly<{
-    // issues and pull_request: opened or edited
-    // issue_comment: created or edited
-    action: string;
-    comment?: Readonly<{
-      html_url: string;
-      body: string;
-    }>;
-    issue?: Issue;
-    pull_request?: Issue;
-  }>;
+type Comment = Readonly<{
+  body: string;
+  html_url: string;
 }>;
+
+// === discussion ===
+// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#discussion
+
+type Discussion = Readonly<{
+  title: string;
+  body: string;
+  user: {login: string};
+  html_url: string;
+}>;
+
+type DiscussionCreated = Context<
+  'discussion',
+  {
+    action: 'created';
+    discussion: Discussion;
+  }
+>;
+
+type DiscussionEdited = Context<
+  'discussion',
+  {
+    action: 'edited';
+    discussion: Discussion;
+  }
+>;
+
+type DiscussionAnswered = Context<
+  'discussion',
+  {
+    action: 'answered';
+    answer: {
+      body: string;
+      html_url: string;
+    };
+    discussion: Discussion;
+  }
+>;
+
+// === discussion comment ===
+// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#discussion_comment
+
+type DiscussionCommentCreated = Context<
+  'discussion_comment',
+  {
+    action: 'created';
+    comment: Comment;
+    discussion: Discussion;
+  }
+>;
+
+type DiscussionCommentEdited = Context<
+  'discussion_comment',
+  {
+    action: 'edited';
+    comment: Comment;
+    discussion: Discussion;
+  }
+>;
+
+// === issues ===
+// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#issues
+
+type Issue = Readonly<{
+  title: string;
+  body: string;
+  assignees: {login: string}[];
+  html_url: string;
+}>;
+
+type IssuesOpened = Context<
+  'issues',
+  {
+    action: 'opened';
+    issue: Issue;
+  }
+>;
+
+type IssuesEdited = Context<
+  'issues',
+  {
+    action: 'edited';
+    issue: Issue;
+  }
+>;
+
+// === issue comment ===
+// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#issue_comment
+
+type IssueCommentCreated = Context<
+  'issue_comment',
+  {
+    action: 'created';
+    comment: Comment;
+    issue: Issue;
+  }
+>;
+
+type IssueCommentEdited = Context<
+  'issue_comment',
+  {
+    action: 'edited';
+    comment: Comment;
+    issue: Issue;
+  }
+>;
+
+// === pull request ===
+// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#pull_request
+
+type PullRequest = Issue &
+  Readonly<{
+    requested_reviewers: {login: string}[];
+    // TODO: requested_teams: string[],
+  }>;
+
+type PullRequestOpened = Context<
+  'pull_request',
+  {
+    action: 'opened';
+    pull_request: PullRequest;
+  }
+>;
+
+type PullRequestEdited = Context<
+  'pull_request',
+  {
+    action: 'edited';
+    pull_request: PullRequest;
+  }
+>;
 
 function parseInput(): Input {
   const roomId = +core.getInput('roomid');
@@ -146,18 +272,54 @@ export function postMessage(
 }
 /* eslint-enable @typescript-eslint/promise-function-async */
 
-export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): [boolean, string] {
-  const issue = ctx.event.issue || ctx.event.pull_request;
-  const title = issue?.title;
-  const url = ctx.event.comment?.html_url ?? issue?.html_url;
-  const body = ctx.event.comment?.body ?? issue?.body ?? '';
-  let users = extractUsers(body);
-  const foundUser = users.length > 0;
-  if (ctx.event_name !== 'issue_comment') {
-    users = users
-      .concat(issue!.assignees.concat(issue!.requested_reviewers ?? []).map(x => x.login))
-      .filter((x, i, xs) => xs.indexOf(x) === i);
+export function extractMessageParts(
+  ctx: GitHubContext
+): Readonly<{title: string; body: string; logins: string[]; url: string}> {
+  switch (ctx.event_name) {
+    case 'discussion':
+      return {
+        title: ctx.event.discussion.title,
+        body: ctx.event.discussion.body,
+        logins: [],
+        url: ctx.event.discussion.html_url
+      };
+    case 'discussion_comment':
+      return {
+        title: ctx.event.discussion.title,
+        body: ctx.event.comment.body,
+        logins: [],
+        url: ctx.event.comment.html_url
+      };
+    case 'issues':
+      return {
+        title: ctx.event.issue.title,
+        body: ctx.event.issue.body,
+        logins: ctx.event.issue.assignees.map(x => x.login),
+        url: ctx.event.issue.html_url
+      };
+    case 'issue_comment':
+      return {
+        title: ctx.event.issue.title,
+        body: ctx.event.comment.body,
+        logins: [],
+        url: ctx.event.comment.html_url
+      };
+    case 'pull_request':
+      return {
+        title: ctx.event.pull_request.title,
+        body: ctx.event.pull_request.body,
+        logins: ctx.event.pull_request.assignees.concat(ctx.event.pull_request.requested_reviewers).map(x => x.login),
+        url: ctx.event.pull_request.html_url
+      };
   }
+}
+
+export function toChatworkMessage(ctx: GitHubContext, map: Mapping, minimum: boolean): [boolean, string] {
+  const {title, body, logins, url} = extractMessageParts(ctx);
+  let users = extractUsers(body)
+    .concat(logins)
+    .filter((x, i, xs) => xs.indexOf(x) === i);
+  const foundUser = users.length > 0;
   const cwUsers = toChatworkUsers(users, map);
 
   let message = '';
