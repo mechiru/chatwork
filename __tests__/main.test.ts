@@ -2,10 +2,13 @@ import {env} from 'process';
 import path from 'path';
 import {extractUsers, postMessage, mergeMappingFile} from '../src/main';
 
+function testFile(file: string): string {
+  return path.join(__dirname, 'testdata', file);
+}
+
 test('test mergeMappingFile', done => {
   (async () => {
-    const filepath = path.join(__dirname, 'testdata/mapping.json');
-    expect(await mergeMappingFile({mechiru1: '[To:123]@mechiru'}, filepath)).toStrictEqual({
+    expect(await mergeMappingFile({mechiru1: '[To:123]@mechiru'}, testFile('mapping.json'))).toStrictEqual({
       mechiru: '[To:123]@mechiru',
       'organization/team': '[To:123]@mechiru [To:124]@suzuki',
       mechiru1: '[To:123]@mechiru'
