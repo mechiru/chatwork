@@ -13,7 +13,7 @@ name: chatwork
 on:
   discussion:
     types:
-      - opened
+      - created
       - edited
       - answered
 
