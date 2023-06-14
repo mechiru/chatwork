@@ -1,4 +1,4 @@
-import * as process from 'process';
+import {env} from 'process';
 import path from 'path';
 import {extractUsers, postMessage, mergeMappingFile} from '../src/main';
 
@@ -36,7 +36,7 @@ test('test extractUsers', () => {
 test('test postMessage', done => {
   (async () => {
     const res = await postMessage(
-      {token: process.env['CHATWORK_API_TOKEN']!, roomId: +process.env['CHATWORK_ROOM_ID']!},
+      {token: env['CHATWORK_API_TOKEN']!, roomId: +env['CHATWORK_ROOM_ID']!},
       'Hello Chatwork!'
     );
     expect(res.message_id).not.toBeNull();
