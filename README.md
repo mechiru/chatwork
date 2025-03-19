@@ -11,23 +11,24 @@ This GitHub Action sends a message to Chatwork when an issue, comment or pull re
 name: chatwork
 
 on:
-  discussion:
-    types:
-      - created
-      - edited
-      - answered
-
-  discussion_comment:
-    types:
-      - created
-      - edited
-
   issues:
     types:
       - opened
       - edited
+      - reopened
 
   issue_comment:
+    types:
+      - created
+      - edited
+
+  discussion:
+    types:
+      - created
+      - edited
+      - reopened
+
+  discussion_comment:
     types:
       - created
       - edited
@@ -36,6 +37,7 @@ on:
     types:
       - opened
       - edited
+      - reopened
 
 jobs:
   notify:

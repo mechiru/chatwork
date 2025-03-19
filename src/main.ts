@@ -8,166 +8,104 @@ type Input = Readonly<{
   token: string;
   mapping: Mapping;
   mappingFile: string;
-  context: GitHubContext;
+  context: Context;
   ignoreBody: boolean;
   skipSendingMessage: boolean;
 }>;
 
 type Mapping = {[key: string]: string | null};
 
-// https://docs.github.com/en/actions/learn-github-actions/contexts#github-context
-type GitHubContext =
-  | DiscussionCreated
-  | DiscussionEdited
-  | DiscussionAnswered
-  | DiscussionCommentCreated
-  | DiscussionCommentEdited
-  | IssuesOpened
-  | IssuesEdited
-  | IssueCommentCreated
-  | IssueCommentEdited
-  | PullRequestOpened
-  | PullRequestEdited;
+const EventName = {
+  issues: 'issues',
+  issueComment: 'issue_comment',
+  discussion: 'discussion',
+  discussionComment: 'discussion_comment',
+  pullRequest: 'pull_request'
+} as const;
 
-type Context<EventName, Event> = Readonly<{
+type EventNames = (typeof EventName)[keyof typeof EventName];
+
+type Context = IssuesContext | IssueCommentContext | DiscussionContext | DiscussionCommentContext | PullRequestContext;
+
+// https://docs.github.com/free-pro-team@latest/actions/reference/context-and-expression-syntax-for-github-actions#github-context
+type ContextBase<T extends EventNames, U extends {}> = Readonly<{
   actor: string;
-  event_name: EventName;
-  event: Event;
+  event_name: T;
+  event: Readonly<U>;
 }>;
 
-type Comment = Readonly<{
-  body: string;
+// https://docs.github.com/rest/issues/issues?apiVersion=2022-11-28#get-an-issue
+type Issue = Readonly<{
   html_url: string;
+  assignees?: Readonly<{login: string}[]>;
+  title: string;
+  body: string;
 }>;
 
-// === discussion ===
-// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#discussion
+// https://docs.github.com/webhooks/webhook-events-and-payloads#issue_comment
+type IssuesContext = ContextBase<
+  typeof EventName.issues,
+  {
+    action: 'opened' | 'edited' | 'reopened';
+    issue: Issue;
+  }
+>;
+
+// https://developer.github.com/webhooks/event-payloads/#issue_comment
+type IssueCommentContext = ContextBase<
+  typeof EventName.issueComment,
+  {
+    action: 'created' | 'edited';
+    // https://docs.github.com/rest/issues/comments?apiVersion=2022-11-28#get-an-issue-comment
+    comment: Readonly<{
+      html_url: string;
+      body: string;
+    }>;
+    issue: Issue;
+  }
+>;
 
 type Discussion = Readonly<{
+  html_url: string;
   title: string;
   body: string;
-  user: {login: string};
-  html_url: string;
 }>;
 
-type DiscussionCreated = Context<
-  'discussion',
+// https://docs.github.com/webhooks/webhook-events-and-payloads#discussion
+type DiscussionContext = ContextBase<
+  typeof EventName.discussion,
   {
-    action: 'created';
+    action: 'created' | 'edited' | 'reopened';
     discussion: Discussion;
   }
 >;
 
-type DiscussionEdited = Context<
-  'discussion',
+// https://docs.github.com/webhooks/webhook-events-and-payloads#discussion_comment
+type DiscussionCommentContext = ContextBase<
+  typeof EventName.discussionComment,
   {
-    action: 'edited';
-    discussion: Discussion;
-  }
->;
-
-type DiscussionAnswered = Context<
-  'discussion',
-  {
-    action: 'answered';
-    answer: {
-      body: string;
+    action: 'created' | 'edited';
+    comment: Readonly<{
       html_url: string;
-    };
+      body: string;
+    }>;
     discussion: Discussion;
   }
 >;
 
-// === discussion comment ===
-// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#discussion_comment
-
-type DiscussionCommentCreated = Context<
-  'discussion_comment',
+// https://docs.github.com/webhooks/webhook-events-and-payloads#pull_request
+type PullRequestContext = ContextBase<
+  typeof EventName.pullRequest,
   {
-    action: 'created';
-    comment: Comment;
-    discussion: Discussion;
-  }
->;
-
-type DiscussionCommentEdited = Context<
-  'discussion_comment',
-  {
-    action: 'edited';
-    comment: Comment;
-    discussion: Discussion;
-  }
->;
-
-// === issues ===
-// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#issues
-
-type Issue = Readonly<{
-  title: string;
-  body: string;
-  assignees: {login: string}[];
-  html_url: string;
-}>;
-
-type IssuesOpened = Context<
-  'issues',
-  {
-    action: 'opened';
-    issue: Issue;
-  }
->;
-
-type IssuesEdited = Context<
-  'issues',
-  {
-    action: 'edited';
-    issue: Issue;
-  }
->;
-
-// === issue comment ===
-// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#issue_comment
-
-type IssueCommentCreated = Context<
-  'issue_comment',
-  {
-    action: 'created';
-    comment: Comment;
-    issue: Issue;
-  }
->;
-
-type IssueCommentEdited = Context<
-  'issue_comment',
-  {
-    action: 'edited';
-    comment: Comment;
-    issue: Issue;
-  }
->;
-
-// === pull request ===
-// https://docs.github.com/en/webhooks-and-events/webhooks/webhook-events-and-payloads#pull_request
-
-type PullRequest = Issue &
-  Readonly<{
-    requested_reviewers: {login: string}[];
-    // TODO: requested_teams: string[],
-  }>;
-
-type PullRequestOpened = Context<
-  'pull_request',
-  {
-    action: 'opened';
-    pull_request: PullRequest;
-  }
->;
-
-type PullRequestEdited = Context<
-  'pull_request',
-  {
-    action: 'edited';
-    pull_request: PullRequest;
+    action: 'opened' | 'edited' | 'reopened';
+    pull_request: Readonly<{
+      html_url: string;
+      assignees?: Readonly<{login: string}[]>;
+      requested_reviewers?: Readonly<{login: string}>[];
+      requested_teams?: Readonly<{slug: string}>[];
+      title: string;
+      body: string;
+    }>;
   }
 >;
 
@@ -272,63 +210,54 @@ export function postMessage(
 }
 /* eslint-enable @typescript-eslint/promise-function-async */
 
-export function extractMessageParts(
-  ctx: GitHubContext
-): Readonly<{title: string; body: string; logins: string[]; url: string}> {
+export function extractMessageParts(ctx: Context): {title: string; body: string; url: string; logins: string[]} {
+  let title = '';
+  let body = '';
+  let url = '';
+  let logins: string[] = [];
+
   switch (ctx.event_name) {
-    case 'discussion': {
-      const common = {
-        title: ctx.event.discussion.title,
-        logins: []
-      };
-      return ctx.event.action !== 'answered'
-        ? {
-            body: ctx.event.discussion.body,
-            url: ctx.event.discussion.html_url,
-            ...common
-          }
-        : {
-            body: ctx.event.answer.body,
-            url: ctx.event.answer.html_url,
-            ...common
-          };
+    case EventName.issues:
+      title = ctx.event.issue.title;
+      body = ctx.event.issue.body;
+      url = ctx.event.issue.html_url;
+      logins = ctx.event.issue.assignees?.map(x => x.login) ?? [];
+      break;
+    case EventName.issueComment:
+      title = ctx.event.issue.title;
+      body = ctx.event.comment.body;
+      url = ctx.event.comment.html_url;
+      break;
+    case EventName.discussion:
+      title = ctx.event.discussion.title;
+      body = ctx.event.discussion.body;
+      url = ctx.event.discussion.html_url;
+      break;
+    case EventName.discussionComment:
+      title = ctx.event.discussion.title;
+      body = ctx.event.comment.body;
+      url = ctx.event.comment.html_url;
+      break;
+    case EventName.pullRequest: {
+      const pr = ctx.event.pull_request;
+      title = pr.title;
+      body = pr.body;
+      url = pr.html_url;
+      const assignees = pr.assignees?.map(x => x.login) ?? [];
+      const reviewers = pr.requested_reviewers?.map(x => x.login) ?? [];
+      const teams = pr.requested_teams?.map(x => x.slug) ?? [];
+      logins = assignees.concat(reviewers, teams);
+      break;
     }
-    case 'discussion_comment':
-      return {
-        title: ctx.event.discussion.title,
-        body: ctx.event.comment.body,
-        logins: [],
-        url: ctx.event.comment.html_url
-      };
-    case 'issues':
-      return {
-        title: ctx.event.issue.title,
-        body: ctx.event.issue.body,
-        logins: ctx.event.issue.assignees.map(x => x.login),
-        url: ctx.event.issue.html_url
-      };
-    case 'issue_comment':
-      return {
-        title: ctx.event.issue.title,
-        body: ctx.event.comment.body,
-        logins: [],
-        url: ctx.event.comment.html_url
-      };
-    case 'pull_request':
-      return {
-        title: ctx.event.pull_request.title,
-        body: ctx.event.pull_request.body,
-        logins: ctx.event.pull_request.assignees.concat(ctx.event.pull_request.requested_reviewers).map(x => x.login),
-        url: ctx.event.pull_request.html_url
-      };
+    default:
   }
+
+  return {title, body, url, logins};
 }
 
-export function toChatworkMessage(ctx: GitHubContext, map: Mapping, minimum: boolean): [boolean, string] {
-  const {title, body, logins, url} = extractMessageParts(ctx);
-  const users = extractUsers(body)
-    .concat(logins)
-    .filter((x, i, xs) => xs.indexOf(x) === i);
+export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): [boolean, string] {
+  const {title, body, url, logins} = extractMessageParts(ctx);
+  const users = logins.concat(extractUsers(body)).filter((x, i, xs) => xs.indexOf(x) === i);
   const foundUser = users.length > 0;
   const cwUsers = toChatworkUsers(users, map);
 
@@ -347,7 +276,7 @@ async function run(): Promise<void> {
   try {
     const input = parseInput();
     core.debug(`event_name: ${input.context.event_name}`);
-    core.debug(`event.action: ${input.context.event.action}`);
+    core.debug(`event.action: ${JSON.stringify(input.context.event.action)}`);
 
     const mapping = await mergeMappingFile(input.mapping, input.mappingFile);
     core.debug(`mapping: ${JSON.stringify(mapping)}`);
