@@ -15,35 +15,104 @@ type Input = Readonly<{
 
 type Mapping = {[key: string]: string | null};
 
-type Issue = Readonly<{
-  html_url: string;
-  assignees: Readonly<{login: string}[]>;
-  title: string;
-  body: string;
-  requested_reviewers?: Readonly<{login: string}>[]; // for pull request
-  // TODO: support `requested_teams`?
+const EventName = {
+  issues: 'issues',
+  issueComment: 'issue_comment',
+  discussion: 'discussion',
+  discussionComment: 'discussion_comment',
+  pullRequest: 'pull_request'
+} as const;
+
+type EventNames = (typeof EventName)[keyof typeof EventName];
+
+type Context =
+  | IssuesContext
+  | IssueCommentContext
+  | DiscussionContext
+  | DiscussionCommentContext
+  | PullRequestContext;
+
+// https://docs.github.com/free-pro-team@latest/actions/reference/context-and-expression-syntax-for-github-actions#github-context
+type ContextBase<T extends EventNames, U extends {}> = Readonly<{
+  actor: string;
+  event_name: T;
+  event: Readonly<U>;
 }>;
 
-// https://docs.github.com/en/free-pro-team@latest/actions/reference/context-and-expression-syntax-for-github-actions#github-context
-type Context = Readonly<{
-  actor: string;
-  event_name: 'issues' | 'issue_comment' | 'pull_request';
-  // https://developer.github.com/webhooks/event-payloads/#issues
-  // https://developer.github.com/webhooks/event-payloads/#issue_comment
-  // https://docs.github.com/en/developers/webhooks-and-events/webhook-events-and-payloads#pull_request
-  // created, edited or deleted
-  event: Readonly<{
-    // issues and pull_request: opened or edited
-    // issue_comment: created or edited
-    action: string;
-    comment?: Readonly<{
+// https://docs.github.com/rest/issues/issues?apiVersion=2022-11-28#get-an-issue
+type Issue = Readonly<{
+  html_url: string;
+  assignees?: Readonly<{login: string}[]>;
+  title: string;
+  body: string;
+}>;
+
+// https://docs.github.com/webhooks/webhook-events-and-payloads#issue_comment
+type IssuesContext = ContextBase<
+  typeof EventName.issues,
+  {
+    action: 'opened' | 'edited' | 'reopened';
+    issue: Issue;
+  }
+>;
+
+// https://developer.github.com/webhooks/event-payloads/#issue_comment
+type IssueCommentContext = ContextBase<
+  typeof EventName.issueComment,
+  {
+    action: 'created' | 'edited';
+    // https://docs.github.com/rest/issues/comments?apiVersion=2022-11-28#get-an-issue-comment
+    comment: Readonly<{
       html_url: string;
       body: string;
     }>;
-    issue?: Issue;
-    pull_request?: Issue;
-  }>;
+    issue: Issue;
+  }
+>;
+
+type Discussion = Readonly<{
+  html_url: string;
+  title: string;
+  body: string;
 }>;
+
+// https://docs.github.com/webhooks/webhook-events-and-payloads#discussion
+type DiscussionContext = ContextBase<
+  typeof EventName.discussion,
+  {
+    action: 'created' | 'edited' | 'reopened';
+    discussion: Discussion;
+  }
+>;
+
+// https://docs.github.com/webhooks/webhook-events-and-payloads#discussion_comment
+type DiscussionCommentContext = ContextBase<
+  typeof EventName.discussionComment,
+  {
+    action: 'created' | 'edited';
+    comment: Readonly<{
+      html_url: string;
+      body: string;
+    }>;
+    discussion: Discussion;
+  }
+>;
+
+// https://docs.github.com/webhooks/webhook-events-and-payloads#pull_request
+type PullRequestContext = ContextBase<
+  typeof EventName.pullRequest,
+  {
+    action: 'opened' | 'edited' | 'reopened';
+    pull_request: Readonly<{
+      html_url: string;
+      assignees: Readonly<{login: string}[]>;
+      requested_reviewers?: Readonly<{login: string}>[];
+      requested_teams?: Readonly<{slug: string}>[];
+      title: string;
+      body: string;
+    }>;
+  }
+>;
 
 function parseInput(): Input {
   const roomId = +core.getInput('roomid');
@@ -147,17 +216,48 @@ export function postMessage(
 /* eslint-enable @typescript-eslint/promise-function-async */
 
 export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): [boolean, string] {
-  const issue = ctx.event.issue || ctx.event.pull_request;
-  const title = issue?.title;
-  const url = ctx.event.comment?.html_url ?? issue?.html_url;
-  const body = ctx.event.comment?.body ?? issue?.body ?? '';
-  let users = extractUsers(body);
-  const foundUser = users.length > 0;
-  if (ctx.event_name !== 'issue_comment') {
-    users = users
-      .concat(issue!.assignees.concat(issue!.requested_reviewers ?? []).map(x => x.login))
-      .filter((x, i, xs) => xs.indexOf(x) === i);
+  let title = '';
+  let body = '';
+  let url = '';
+  let users: string[] = [];
+
+  switch (ctx.event_name) {
+    case EventName.issues:
+      title = ctx.event.issue.title;
+      body = ctx.event.issue.body;
+      url = ctx.event.issue.html_url;
+      users = ctx.event.issue.assignees?.map(x => x.login) ?? [];
+      break;
+    case EventName.issueComment:
+      title = ctx.event.issue.title;
+      body = ctx.event.comment.body;
+      url = ctx.event.comment.html_url;
+      break;
+    case EventName.discussion:
+      title = ctx.event.discussion.title;
+      body = ctx.event.discussion.body;
+      url = ctx.event.discussion.html_url;
+      break;
+    case EventName.discussionComment:
+      title = ctx.event.discussion.title;
+      body = ctx.event.comment.body;
+      url = ctx.event.comment.html_url;
+      break;
+    case EventName.pullRequest:
+      const pr = ctx.event.pull_request;
+      title = pr.title;
+      body = pr.body;
+      url = pr.html_url;
+      users = (pr.requested_reviewers?.map(x => x.login) ?? []).concat(
+        pr.requested_teams?.map(x => x.slug) ?? []
+      );
+      break;
+    default:
   }
+
+  const fromBody = extractUsers(body);
+  if (fromBody.length > 0) users = users.concat(fromBody).filter((x, i, xs) => xs.indexOf(x) === i);
+  const foundUser = users.length > 0;
   const cwUsers = toChatworkUsers(users, map);
 
   let message = '';
