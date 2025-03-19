@@ -15,8 +15,20 @@ on:
     types:
       - opened
       - edited
+      - reopened
 
   issue_comment:
+    types:
+      - created
+      - edited
+
+  discussion:
+    types:
+      - created
+      - edited
+      - reopened
+
+  discussion_comment:
     types:
       - created
       - edited
@@ -25,6 +37,7 @@ on:
     types:
       - opened
       - edited
+      - reopened
 
 jobs:
   notify:
