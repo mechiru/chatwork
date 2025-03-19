@@ -256,12 +256,10 @@ export function extractMessageParts(ctx: Context): {title: string; body: string;
 }
 
 export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): [boolean, string] {
-  // eslint-disable-next-line prefer-const
-  let {title, body, url, logins} = extractMessageParts(ctx);
-  const fromBody = extractUsers(body);
-  if (fromBody.length > 0) logins = logins.concat(fromBody).filter((x, i, xs) => xs.indexOf(x) === i);
-  const foundUser = logins.length > 0;
-  const cwUsers = toChatworkUsers(logins, map);
+  const {title, body, url, logins} = extractMessageParts(ctx);
+  const users = logins.concat(extractUsers(body)).filter((x, i, xs) => xs.indexOf(x) === i)n;
+  const foundUser = users.length > 0;
+  const cwUsers = toChatworkUsers(users, map);
 
   let message = '';
   if (cwUsers.length > 0) message += `${cwUsers.join('\n')}\n`;
