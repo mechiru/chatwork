@@ -243,7 +243,7 @@ export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean):
       body = ctx.event.comment.body;
       url = ctx.event.comment.html_url;
       break;
-    case EventName.pullRequest:
+    case EventName.pullRequest: {
       const pr = ctx.event.pull_request;
       title = pr.title;
       body = pr.body;
@@ -252,6 +252,7 @@ export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean):
         pr.requested_teams?.map(x => x.slug) ?? []
       );
       break;
+    }
     default:
   }
 
