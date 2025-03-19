@@ -25,12 +25,7 @@ const EventName = {
 
 type EventNames = (typeof EventName)[keyof typeof EventName];
 
-type Context =
-  | IssuesContext
-  | IssueCommentContext
-  | DiscussionContext
-  | DiscussionCommentContext
-  | PullRequestContext;
+type Context = IssuesContext | IssueCommentContext | DiscussionContext | DiscussionCommentContext | PullRequestContext;
 
 // https://docs.github.com/free-pro-team@latest/actions/reference/context-and-expression-syntax-for-github-actions#github-context
 type ContextBase<T extends EventNames, U extends {}> = Readonly<{
@@ -105,7 +100,7 @@ type PullRequestContext = ContextBase<
     action: 'opened' | 'edited' | 'reopened';
     pull_request: Readonly<{
       html_url: string;
-      assignees: Readonly<{login: string}[]>;
+      assignees?: Readonly<{login: string}[]>;
       requested_reviewers?: Readonly<{login: string}>[];
       requested_teams?: Readonly<{slug: string}>[];
       title: string;
@@ -125,7 +120,7 @@ function parseInput(): Input {
   return {roomId, token, mapping, mappingFile, context, ignoreBody, skipSendingMessage};
 }
 
-async function mergeMappingFile(mapping: Mapping, mappingFile: string): Promise<Mapping> {
+export async function mergeMappingFile(mapping: Mapping, mappingFile: string): Promise<Mapping> {
   if (mappingFile === '') {
     return mapping;
   }
@@ -215,18 +210,18 @@ export function postMessage(
 }
 /* eslint-enable @typescript-eslint/promise-function-async */
 
-export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): [boolean, string] {
+export function extractMessageParts(ctx: Context): {title: string; body: string; url: string; logins: string[]} {
   let title = '';
   let body = '';
   let url = '';
-  let users: string[] = [];
+  let logins: string[] = [];
 
   switch (ctx.event_name) {
     case EventName.issues:
       title = ctx.event.issue.title;
       body = ctx.event.issue.body;
       url = ctx.event.issue.html_url;
-      users = ctx.event.issue.assignees?.map(x => x.login) ?? [];
+      logins = ctx.event.issue.assignees?.map(x => x.login) ?? [];
       break;
     case EventName.issueComment:
       title = ctx.event.issue.title;
@@ -248,18 +243,25 @@ export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean):
       title = pr.title;
       body = pr.body;
       url = pr.html_url;
-      users = (pr.requested_reviewers?.map(x => x.login) ?? []).concat(
-        pr.requested_teams?.map(x => x.slug) ?? []
-      );
+      const assignees = pr.assignees?.map(x => x.login) ?? [];
+      const reviewers = pr.requested_reviewers?.map(x => x.login) ?? [];
+      const teams = pr.requested_teams?.map(x => x.slug) ?? [];
+      logins = assignees.concat(reviewers, teams);
       break;
     }
     default:
   }
 
+  return {title, body, url, logins};
+}
+
+export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): [boolean, string] {
+  // eslint-disable-next-line prefer-const
+  let {title, body, url, logins} = extractMessageParts(ctx);
   const fromBody = extractUsers(body);
-  if (fromBody.length > 0) users = users.concat(fromBody).filter((x, i, xs) => xs.indexOf(x) === i);
-  const foundUser = users.length > 0;
-  const cwUsers = toChatworkUsers(users, map);
+  if (fromBody.length > 0) logins = logins.concat(fromBody).filter((x, i, xs) => xs.indexOf(x) === i);
+  const foundUser = logins.length > 0;
+  const cwUsers = toChatworkUsers(logins, map);
 
   let message = '';
   if (cwUsers.length > 0) message += `${cwUsers.join('\n')}\n`;
