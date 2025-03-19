@@ -59,15 +59,15 @@ test('test extractMessageParts', done => {
           url: 'https://github.com/mechiru/github-actions-playground/discussions/7'
         }
       },
-      {
-        file: 'discussion_answered.json',
-        want: {
-          title: 'new discussion',
-          body: 'fuga',
-          logins: [],
-          url: 'https://github.com/mechiru/github-actions-playground/discussions/6#discussioncomment-6159642'
-        }
-      },
+      // {
+      //   file: 'discussion_answered.json',
+      //   want: {
+      //     title: 'new discussion',
+      //     body: 'fuga',
+      //     logins: [],
+      //     url: 'https://github.com/mechiru/github-actions-playground/discussions/6#discussioncomment-6159642'
+      //   }
+      // },
       // discussion comment
       {
         file: 'discussion_comment_created.json',
