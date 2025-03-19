@@ -257,7 +257,7 @@ export function extractMessageParts(ctx: Context): {title: string; body: string;
 
 export function toChatworkMessage(ctx: Context, map: Mapping, minimum: boolean): [boolean, string] {
   const {title, body, url, logins} = extractMessageParts(ctx);
-  const users = logins.concat(extractUsers(body)).filter((x, i, xs) => xs.indexOf(x) === i)n;
+  const users = logins.concat(extractUsers(body)).filter((x, i, xs) => xs.indexOf(x) === i);
   const foundUser = users.length > 0;
   const cwUsers = toChatworkUsers(users, map);
 
