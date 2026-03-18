@@ -1,0 +1,22 @@
+{
+  "actor": "reviewer1",
+  "event_name": "pull_request_review",
+  "event": {
+    "action": "submitted",
+    "review": {
+      "html_url": "https://github.com/mechiru/github-actions-playground/pull/8#pullrequestreview-1234567890",
+      "body": "LGTM! @mechiru please merge when ready",
+      "state": "approved",
+      "user": {
+        "login": "reviewer1"
+      }
+    },
+    "pull_request": {
+      "html_url": "https://github.com/mechiru/github-actions-playground/pull/8",
+      "title": "Commit for trigger test",
+      "user": {
+        "login": "mechiru"
+      }
+    }
+  }
+}

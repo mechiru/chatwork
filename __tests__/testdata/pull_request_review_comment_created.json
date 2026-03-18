@@ -1,0 +1,22 @@
+{
+  "actor": "reviewer1",
+  "event_name": "pull_request_review_comment",
+  "event": {
+    "action": "created",
+    "comment": {
+      "html_url": "https://github.com/mechiru/github-actions-playground/pull/8#discussion_r1234567890",
+      "body": "This line should be refactored",
+      "path": "src/main.ts",
+      "user": {
+        "login": "reviewer1"
+      }
+    },
+    "pull_request": {
+      "html_url": "https://github.com/mechiru/github-actions-playground/pull/8",
+      "title": "Commit for trigger test",
+      "user": {
+        "login": "mechiru"
+      }
+    }
+  }
+}

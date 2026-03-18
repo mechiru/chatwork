@@ -143,6 +143,26 @@ test('test extractMessageParts', done => {
           logins: ['mechiru'],
           url: 'https://github.com/mechiru/github-actions-playground/pull/8'
         }
+      },
+      // pull request review
+      {
+        file: 'pull_request_review_submitted.json',
+        want: {
+          title: 'Commit for trigger test',
+          body: 'LGTM! @mechiru please merge when ready',
+          logins: ['mechiru'],
+          url: 'https://github.com/mechiru/github-actions-playground/pull/8#pullrequestreview-1234567890'
+        }
+      },
+      // pull request review comment
+      {
+        file: 'pull_request_review_comment_created.json',
+        want: {
+          title: 'Commit for trigger test',
+          body: 'This line should be refactored',
+          logins: ['mechiru'],
+          url: 'https://github.com/mechiru/github-actions-playground/pull/8#discussion_r1234567890'
+        }
       }
     ].map(async c => {
       const file = await readFile(testFile(c.file), {encoding: 'utf8'});

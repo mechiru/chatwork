@@ -20,12 +20,21 @@ const EventName = {
   issueComment: 'issue_comment',
   discussion: 'discussion',
   discussionComment: 'discussion_comment',
-  pullRequest: 'pull_request'
+  pullRequest: 'pull_request',
+  pullRequestReview: 'pull_request_review',
+  pullRequestReviewComment: 'pull_request_review_comment'
 } as const;
 
 type EventNames = (typeof EventName)[keyof typeof EventName];
 
-type Context = IssuesContext | IssueCommentContext | DiscussionContext | DiscussionCommentContext | PullRequestContext;
+type Context =
+  | IssuesContext
+  | IssueCommentContext
+  | DiscussionContext
+  | DiscussionCommentContext
+  | PullRequestContext
+  | PullRequestReviewContext
+  | PullRequestReviewCommentContext;
 
 // https://docs.github.com/free-pro-team@latest/actions/reference/context-and-expression-syntax-for-github-actions#github-context
 type ContextBase<T extends EventNames, U extends {}> = Readonly<{
@@ -105,6 +114,44 @@ type PullRequestContext = ContextBase<
       requested_teams?: Readonly<{slug: string}>[];
       title: string;
       body: string;
+    }>;
+  }
+>;
+
+// https://docs.github.com/webhooks/webhook-events-and-payloads#pull_request_review
+type PullRequestReviewContext = ContextBase<
+  typeof EventName.pullRequestReview,
+  {
+    action: 'submitted' | 'edited' | 'dismissed';
+    review: Readonly<{
+      html_url: string;
+      body: string | null;
+      state: string;
+      user: Readonly<{login: string}>;
+    }>;
+    pull_request: Readonly<{
+      html_url: string;
+      title: string;
+      user: Readonly<{login: string}>;
+    }>;
+  }
+>;
+
+// https://docs.github.com/webhooks/webhook-events-and-payloads#pull_request_review_comment
+type PullRequestReviewCommentContext = ContextBase<
+  typeof EventName.pullRequestReviewComment,
+  {
+    action: 'created' | 'edited';
+    comment: Readonly<{
+      html_url: string;
+      body: string;
+      path: string;
+      user: Readonly<{login: string}>;
+    }>;
+    pull_request: Readonly<{
+      html_url: string;
+      title: string;
+      user: Readonly<{login: string}>;
     }>;
   }
 >;
@@ -247,6 +294,24 @@ export function extractMessageParts(ctx: Context): {title: string; body: string;
       const reviewers = pr.requested_reviewers?.map(x => x.login) ?? [];
       const teams = pr.requested_teams?.map(x => x.slug) ?? [];
       logins = assignees.concat(reviewers, teams);
+      break;
+    }
+    case EventName.pullRequestReview: {
+      const review = ctx.event.review;
+      const pr = ctx.event.pull_request;
+      title = pr.title;
+      body = review.body ?? '';
+      url = review.html_url;
+      logins = [pr.user.login];
+      break;
+    }
+    case EventName.pullRequestReviewComment: {
+      const comment = ctx.event.comment;
+      const pr = ctx.event.pull_request;
+      title = pr.title;
+      body = comment.body;
+      url = comment.html_url;
+      logins = [pr.user.login];
       break;
     }
     default:
