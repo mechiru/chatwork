@@ -48,7 +48,7 @@ type Issue = Readonly<{
   html_url: string;
   assignees?: Readonly<{login: string}[]>;
   title: string;
-  body: string;
+  body: string | null;
 }>;
 
 // https://docs.github.com/webhooks/webhook-events-and-payloads#issue_comment
@@ -77,7 +77,7 @@ type IssueCommentContext = ContextBase<
 type Discussion = Readonly<{
   html_url: string;
   title: string;
-  body: string;
+  body: string | null;
 }>;
 
 // https://docs.github.com/webhooks/webhook-events-and-payloads#discussion
@@ -113,7 +113,7 @@ type PullRequestContext = ContextBase<
       requested_reviewers?: Readonly<{login: string}>[];
       requested_teams?: Readonly<{slug: string}>[];
       title: string;
-      body: string;
+      body: string | null;
     }>;
   }
 >;
@@ -266,7 +266,7 @@ export function extractMessageParts(ctx: Context): {title: string; body: string;
   switch (ctx.event_name) {
     case EventName.issues:
       title = ctx.event.issue.title;
-      body = ctx.event.issue.body;
+      body = ctx.event.issue.body ?? '';
       url = ctx.event.issue.html_url;
       logins = ctx.event.issue.assignees?.map(x => x.login) ?? [];
       break;
@@ -277,7 +277,7 @@ export function extractMessageParts(ctx: Context): {title: string; body: string;
       break;
     case EventName.discussion:
       title = ctx.event.discussion.title;
-      body = ctx.event.discussion.body;
+      body = ctx.event.discussion.body ?? '';
       url = ctx.event.discussion.html_url;
       break;
     case EventName.discussionComment:
@@ -288,7 +288,7 @@ export function extractMessageParts(ctx: Context): {title: string; body: string;
     case EventName.pullRequest: {
       const pr = ctx.event.pull_request;
       title = pr.title;
-      body = pr.body;
+      body = pr.body ?? '';
       url = pr.html_url;
       const assignees = pr.assignees?.map(x => x.login) ?? [];
       const reviewers = pr.requested_reviewers?.map(x => x.login) ?? [];
